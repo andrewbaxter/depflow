@@ -74,12 +74,12 @@ def args_hash(*keys):
         cs.update(str(getattr(args, k)))
     return 'args {}'.format(','.join(keys)), cs.hexdigest()
 
-@depflow.depends
-def step_a(arg_hash('output_dir', 'author')):
+@depflow.depends(arg_hash('output_dir', 'author'))
+def step_a():
     build_file('a.dat', args.output_dir, author=args.author)
 
-@depflow.depends
-def step_b(arg_hash('output_dir')):
+@depflow.depends(arg_hash('output_dir'))
+def step_b():
     build_file('b.dat', args.output_dir, author='system')
 ```
 
