@@ -8,16 +8,16 @@ from plumbum.cmd import cp, cat
 
 
 @depflow.depends(depflow.file('a.txt'))
-def process_a():
+def step_a():
     cp('a.txt', 'a')
 
 
 @depflow.depends(depflow.file('b.txt'))
-def process_b():
+def step_b():
     cp('b.txt', 'b')
 
 
-@depflow.depends(process_a, process_b, depflow.file('c.txt'))
-def process_c():
+@depflow.depends(step_a, step_b, depflow.file('c.txt'))
+def step_c():
     cp('c.txt', 'c')
-    cat['a', 'b', 'c'] > 'done'
+    (cat['a', 'b', 'c'] > 'done')()
