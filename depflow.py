@@ -139,27 +139,31 @@ def file_hash(path):
 
 
 @check
-def tree(path):
+def tree(path, depth=0):
     '''Check for changes in a file tree by timestamp.'''
     if not path.endswith('/'):
         path = path + '/'
     value = 0
-    for root, dirs, files in os.walk(path):
+    for depth_, (root, dirs, files) in enumerate(os.walk(path)):
+        if depth > 0 and depth_ > depth:
+            break
         for file in files:
             value += os.path.getmtime(os.path.join(root, file))
-    return 't:' + path, value
+    return 't:{}:{}'.format(path, depth), value
 
 
 @check
-def tree_hash(path):
+def tree_hash(path, depth=0):
     '''Check for changes in a file tree by hash.'''
     if not path.endswith('/'):
         path = path + '/'
     cs = md5()
-    for root, dirs, files in os.walk(path):
+    for depth_, (root, dirs, files) in enumerate(os.walk(path)):
+        if depth > 0 and depth_ > depth:
+            break
         for file in files:
             _update_hash(os.path.join(root, file), cs)
-    return 'h:' + path, cs.hexdigest()
+    return 'h:{}:{}'.format(path, depth), cs.hexdigest()
 
 
 def raw_check(function):

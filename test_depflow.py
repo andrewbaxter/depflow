@@ -137,7 +137,8 @@ class TestDepflow(unittest.TestCase):
         self.assertTrue(run[0])
 
         run = [False]
-        @depflow.depends(depflow.file('a.txt'))
+
+        @depflow.depends(depflow.file('a.txt'))  # noqa
         def update():
             run[0] = True
         self.assertFalse(run[0])
@@ -154,6 +155,7 @@ class TestDepflow(unittest.TestCase):
         touch('a.txt')
 
         run = [False]
+
         @depflow.depends(depflow.file('a.txt'))
         def update():
             run[0] = True
