@@ -16,20 +16,25 @@ from plumbum.cmd import cp, cat, touch, rm, echo
 
 
 def flow():
+    run = [False, False, False]
+
     @depflow.depends(depflow.file_hash('a.txt'))
     def process_a():
         cp('a.txt', 'a')
+        run[0] = True
 
     @depflow.depends(depflow.nofile('b'))
     def process_b():
         touch('b')
+        run[1] = True
 
     @depflow.depends(process_a, process_b, depflow.file_hash('c.txt'))
     def process_c():
         cp('c.txt', 'c')
         (cat['a', 'b', 'c'] > 'done')()
+        run[2] = True
 
-    return process_a, process_b, process_c
+    return run[0], run[1], run[2]
 
 
 class TestDepflow(unittest.TestCase):
@@ -61,18 +66,18 @@ class TestDepflow(unittest.TestCase):
 
         touch('c.txt')
         a, b, c = flow()
-        self.assertFalse(a.changed(''))
-        self.assertFalse(b.changed(''))
-        self.assertTrue(c.changed(''))
+        self.assertFalse(a)
+        self.assertFalse(b)
+        self.assertTrue(c)
 
     def test_okay(self):
         touch('a.txt')
         touch('c.txt')
 
         a, b, c = flow()
-        self.assertTrue(a.changed(''))
-        self.assertTrue(b.changed(''))
-        self.assertTrue(c.changed(''))
+        self.assertTrue(a)
+        self.assertTrue(b)
+        self.assertTrue(c)
 
     def test_no_work(self):
         touch('a.txt')
@@ -81,9 +86,9 @@ class TestDepflow(unittest.TestCase):
         flow()
 
         a, b, c = flow()
-        self.assertFalse(a.changed(''))
-        self.assertFalse(b.changed(''))
-        self.assertFalse(c.changed(''))
+        self.assertFalse(a)
+        self.assertFalse(b)
+        self.assertFalse(c)
 
     def test_rebuild_a(self):
         touch('a.txt')
@@ -93,9 +98,9 @@ class TestDepflow(unittest.TestCase):
 
         (echo['junk'] > 'a.txt')()
         a, b, c = flow()
-        self.assertTrue(a.changed(''))
-        self.assertFalse(b.changed(''))
-        self.assertTrue(c.changed(''))
+        self.assertTrue(a)
+        self.assertFalse(b)
+        self.assertTrue(c)
 
     def test_no_rebuild_b(self):
         touch('a.txt')
@@ -105,9 +110,9 @@ class TestDepflow(unittest.TestCase):
 
         touch('b')
         a, b, c = flow()
-        self.assertFalse(a.changed(''))
-        self.assertFalse(b.changed(''))
-        self.assertFalse(c.changed(''))
+        self.assertFalse(a)
+        self.assertFalse(b)
+        self.assertFalse(c)
 
     def test_rebuild_b(self):
         touch('a.txt')
@@ -117,22 +122,25 @@ class TestDepflow(unittest.TestCase):
 
         rm('b')
         a, b, c = flow()
-        self.assertFalse(a.changed(''))
-        self.assertTrue(b.changed(''))
-        self.assertTrue(c.changed(''))
+        self.assertFalse(a)
+        self.assertTrue(b)
+        self.assertTrue(c)
 
     def test_timestamp_no_rebuild(self):
         touch('a.txt')
 
-        @depflow.depends(depflow.file('a.txt'))
-        def update():
-            pass
-        self.assertTrue(update.changed(''))
+        run = [False]
 
         @depflow.depends(depflow.file('a.txt'))
         def update():
-            pass
-        self.assertFalse(update.changed(''))
+            run[0] = True
+        self.assertTrue(run[0])
+
+        run = [False]
+        @depflow.depends(depflow.file('a.txt'))
+        def update():
+            run[0] = True
+        self.assertFalse(run[0])
 
     def test_timestamp_rebuild(self):
         touch('a.txt')
@@ -140,15 +148,16 @@ class TestDepflow(unittest.TestCase):
         @depflow.depends(depflow.file('a.txt'))
         def update():
             pass
-        self.assertTrue(update.changed(''))
+        self.assertTrue(update)
 
         time.sleep(1)
         touch('a.txt')
 
+        run = [False]
         @depflow.depends(depflow.file('a.txt'))
         def update():
-            pass
-        self.assertTrue(update.changed(''))
+            run[0] = True
+        self.assertTrue(run[0])
 
     def tearDown(self):
         rm('a.txt', retcode=None)

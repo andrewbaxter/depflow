@@ -1,12 +1,12 @@
 import logging
 import os
+import time
+import random
 from hashlib import md5
 import json
 import sqlite3
 
 logger = logging.getLogger('depflow')
-
-os.stat_float_times(False)
 
 _db_name = os.environ.get('DEPFLOW_CACHE', '.depflow.sqlite3')
 _db = sqlite3.connect(_db_name)
@@ -14,7 +14,7 @@ logger.debug('Using cache at {}'.format(os.path.abspath(_db_name)))
 _db.execute('create table if not exists keyvalue (key text primary key, value text not null)')  # noqa
 _db.commit()
 
-_id = ''
+_random = random.SystemRandom()
 
 
 def _db_get(key):
@@ -30,11 +30,6 @@ def _db_set(key, value):
         'insert or replace into keyvalue (key, value) values (?, ?)',
         (key, value))
     _db.commit()
-
-
-def flow_id(name):
-    global _id
-    _id = name
 
 
 def depends(*nodes):
@@ -56,17 +51,25 @@ def depends(*nodes):
                 if self._changed:
                     logger.info('Running {}'.format(function.__name__))
                     function()
+                    self._invocation = json.dumps([
+                        int(time.time() * 1000),
+                        _random.random()])
+                    _db_set(self._unique, self._invocation)
                     for node in nodes:
                         node.commit_changed(self)
+                else:
+                    self._invocation = _db_get(self._unique)
 
             def unique(self):
                 return self._unique
 
             def changed(self, base):
-                return self._changed
+                k = json.dumps([self._unique, base.unique()])
+                return _db_get(k) != self._invocation
 
             def commit_changed(self, base):
-                pass
+                k = json.dumps([self._unique, base.unique()])
+                _db_set(k, self._invocation)
 
         return _Rule()
     return wrap_function
@@ -92,14 +95,14 @@ def check(function):
                 return k
 
             def changed(self, base):
-                k2 = json.dumps([_id, k, base.unique()])
+                k2 = json.dumps([k, base.unique()])
                 v_old = _db_get(k2)
                 if v == v_old:
                     return False
                 return True
 
             def commit_changed(self, base):
-                k2 = json.dumps([_id, k, base.unique()])
+                k2 = json.dumps([k, base.unique()])
                 _db_set(k2, v)
 
         return _Check()
