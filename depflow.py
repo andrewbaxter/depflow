@@ -87,6 +87,9 @@ def check(function):
     '''
     def inner(*pargs, **kwargs):
         k, v = function(*pargs, **kwargs)
+        if not isinstance(k, (list, tuple)):
+            k = (k,)
+        k = json.dumps((function.__name__,) + k)
         v = str(v)
         logger.debug('Cached check: {}, {}'.format(repr(k), repr(v)))
 
@@ -113,9 +116,9 @@ def check(function):
 def file(path):
     '''Check for changes in a single file by timestamp.'''
     try:
-        return 't:' + path, int(os.path.getmtime(path) * 1000)
+        return path, int(os.path.getmtime(path) * 1000)
     except FileNotFoundError:
-        return 't:' + path, 0
+        return path, 0
 
 
 def _update_hash(path, cs):
@@ -133,9 +136,9 @@ def file_hash(path):
     cs = md5()
     try:
         _update_hash(path, cs)
-        return 'h:' + path, cs.hexdigest()
+        return path, cs.hexdigest()
     except FileNotFoundError:
-        return 'h:' + path, 0
+        return path, 0
 
 
 @check
@@ -149,7 +152,7 @@ def tree(path, depth=0):
             break
         for file in files:
             value += os.path.getmtime(os.path.join(root, file))
-    return 't:{}:{}'.format(path, depth), value
+    return (path, depth), value
 
 
 @check
@@ -163,7 +166,7 @@ def tree_hash(path, depth=0):
             break
         for file in files:
             _update_hash(os.path.join(root, file), cs)
-    return 'h:{}:{}'.format(path, depth), cs.hexdigest()
+    return (path, depth), cs.hexdigest()
 
 
 def raw_check(function):
@@ -176,6 +179,9 @@ def raw_check(function):
     '''
     def inner(*pargs, **kwargs):
         k, v = function(*pargs, **kwargs)
+        if not isinstance(k, (list, tuple)):
+            k = (k,)
+        k = json.dumps((function.__name__,) + k)
         logger.debug('Raw check: {}, {}'.format(repr(k), repr(v)))
 
         class _Check(object):
