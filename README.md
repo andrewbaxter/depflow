@@ -1,6 +1,6 @@
 [![Build Status](https://snap-ci.com/andrewbaxter/depflow/branch/master/build_image)](https://snap-ci.com/andrewbaxter/depflow/branch/master)
 
-#What
+# What
 
 Depflow is a library for building pipelined processes where individual steps can be conditionally omitted.  The traditional use case is building software.
 
@@ -32,23 +32,23 @@ def step_c():
     (cat['a', 'b', 'c'] > 'done')()
 ```
 
-#Why
+# Why
 
 Existing build systems generally take a framework approach and are geared around file system changes.  Depflow is a Python library (and an extremely simple one) so it can be embedded in other software such as command line tools and scripts.  It was designed to easily mix file system and non file system dependencies such as API endpoint responses or docker image hashes.
 
-#Reference
+# Reference
 
 Look at `depfile.py` for reference documentation.  It may be more up to date than this readme.
 
-#Defining a process
+# Defining a process
 
 Define steps in the process as nullary functions decorated with `@depflow.depends(*dependencies)`.  Dependencies can either be other steps or checks such as `depflow.file(path)` and `depflow.file_hash(path)`.  Steps are run as they are defined.
 
-#Creating new checks
+# Creating new checks
 
 Depflow accounts for two different types of dependency checks.
 
-###Cached checks
+### Cached checks
 
 Use `@depflow.check` to decorate a function that returns a value representing the state of some resource, where a dependent step only needs to be updated if the state of the resource changes.
 
@@ -85,7 +85,7 @@ def step_b():
 
 Cached state is stored and compared based on a unique id generated from the first return value, the step name and the ids of its other dependencies.
 
-###Uncached checks
+### Uncached checks
 
 Use `@depflow.raw_check` to decorate a function that returns a boolean indicating that the dependent step needs to be updated.
 
